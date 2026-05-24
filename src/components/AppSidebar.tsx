@@ -24,7 +24,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import logo from "@/assets/ecotrack-logo.jpg";
-import { clearUser } from "@/lib/auth";
+import { signOut } from "@/lib/auth";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -47,8 +47,8 @@ export function AppSidebar() {
 
   const isActive = (path: string) => currentPath === path;
 
-  const handleLogout = () => {
-    clearUser();
+  const handleLogout = async () => {
+    await signOut();
     navigate({ to: "/login" });
   };
 

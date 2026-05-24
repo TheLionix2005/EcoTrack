@@ -2,8 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/ecotrack-logo.jpg";
-import { setUser } from "@/lib/auth";
+import { signInWithEmail, signInWithGoogle } from "@/lib/auth";
 import { GoogleButton } from "@/components/GoogleButton";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -20,16 +21,28 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
-    setUser({ name: email.split("@")[0], email, provider: "password" });
+    setLoading(true);
+    const { error } = await signInWithEmail(email, password);
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     navigate({ to: "/dashboard" });
   };
 
-  const handleGoogle = () => {
-    setUser({ name: "Usuario Google", email: "usuario@gmail.com", provider: "google" });
+  const handleGoogle = async () => {
+    const result = await signInWithGoogle();
+    if (result.error) {
+      toast.error("No se pudo iniciar con Google");
+      return;
+    }
+    if (result.redirected) return;
     navigate({ to: "/dashboard" });
   };
 
@@ -80,21 +93,12 @@ function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-muted-foreground">
-              <input type="checkbox" className="h-4 w-4 rounded border-input" />
-              Recordarme
-            </label>
-            <a href="#" className="font-medium text-primary hover:underline">
-              ¿Olvidaste tu contraseña?
-            </a>
-          </div>
-
           <button
             type="submit"
-            className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            disabled={loading}
+            className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
           >
-            Iniciar sesión
+            {loading ? "Ingresando..." : "Iniciar sesión"}
           </button>
         </form>
 

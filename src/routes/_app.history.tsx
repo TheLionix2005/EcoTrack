@@ -1,21 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/history")({
   head: () => ({ meta: [{ title: "Historial — EcoTrack" }] }),
   component: HistoryPage,
 });
 
-const rows = [
-  { date: "20/05/2026", cat: "Transporte", act: "Bus al trabajo", kg: "5 kg" },
-  { date: "20/05/2026", cat: "Energía", act: "Uso de electricidad", kg: "8 kg" },
-  { date: "19/05/2026", cat: "Alimentación", act: "Almuerzo vegetariano", kg: "3 kg" },
-  { date: "19/05/2026", cat: "Residuos", act: "Reciclaje de plástico", kg: "2 kg" },
-  { date: "18/05/2026", cat: "Transporte", act: "Bicicleta", kg: "0 kg" },
-  { date: "18/05/2026", cat: "Energía", act: "Apagado de luces innecesarias", kg: "1 kg" },
-];
+type Row = { id: string; name: string; description: string | null; category: string | null; co2_kg: number; occurred_at: string };
 
 function HistoryPage() {
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("habits")
+      .select("*")
+      .order("occurred_at", { ascending: false })
+      .then(({ data }) => {
+        setRows((data ?? []) as Row[]);
+        setLoading(false);
+      });
+  }, []);
+
+  const total = rows.reduce((s, r) => s + Number(r.co2_kg), 0);
+  const avg = rows.length ? total / rows.length : 0;
+
   return (
     <div>
       <PageHeader title="Historial" subtitle="Consulta el registro de tu impacto ambiental" />
@@ -31,26 +43,42 @@ function HistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-border">
-                <td className="px-4 py-3 text-muted-foreground">{r.date}</td>
-                <td className="px-4 py-3 text-foreground">{r.cat}</td>
-                <td className="px-4 py-3 text-foreground">{r.act}</td>
-                <td className="px-4 py-3 text-right font-semibold text-foreground">{r.kg}</td>
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  Cargando...
+                </td>
               </tr>
-            ))}
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  Aún no hay registros.
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => (
+                <tr key={r.id} className="border-t border-border">
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {new Date(r.occurred_at).toLocaleDateString("es-ES")}
+                  </td>
+                  <td className="px-4 py-3 text-foreground">{r.category}</td>
+                  <td className="px-4 py-3 text-foreground">{r.name}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-foreground">{Number(r.co2_kg)} kg</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Impacto total en el período</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">120 kg CO₂e</p>
+          <p className="text-sm text-muted-foreground">Impacto total acumulado</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{total.toFixed(1)} kg CO₂e</p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-sm text-muted-foreground">Promedio diario</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">17.1 kg CO₂e</p>
+          <p className="text-sm text-muted-foreground">Promedio por registro</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{avg.toFixed(1)} kg CO₂e</p>
         </div>
       </div>
     </div>

@@ -1,22 +1,27 @@
-// Simple local-only auth stored in localStorage. No backend.
-export type User = { name: string; email: string; provider: "password" | "google" };
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
-const KEY = "ecotrack_user";
-
-export function getUser(): User | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
+export async function signInWithEmail(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password });
 }
 
-export function setUser(user: User) {
-  localStorage.setItem(KEY, JSON.stringify(user));
+export async function signUpWithEmail(email: string, password: string, fullName: string) {
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/dashboard`,
+      data: { full_name: fullName },
+    },
+  });
 }
 
-export function clearUser() {
-  localStorage.removeItem(KEY);
+export async function signInWithGoogle() {
+  return lovable.auth.signInWithOAuth("google", {
+    redirect_uri: `${window.location.origin}/dashboard`,
+  });
+}
+
+export async function signOut() {
+  return supabase.auth.signOut();
 }

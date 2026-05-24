@@ -3,8 +3,9 @@ import { useState } from "react";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 import logo from "@/assets/ecotrack-logo.jpg";
 import heroImg from "@/assets/ecotrack-hero.jpg";
-import { setUser } from "@/lib/auth";
+import { signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import { GoogleButton } from "@/components/GoogleButton";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/register")({
   head: () => ({
@@ -21,16 +22,33 @@ function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) return;
-    setUser({ name, email, provider: "password" });
+    if (password.length < 6) {
+      toast.error("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setLoading(true);
+    const { error } = await signUpWithEmail(email, password, name);
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Cuenta creada");
     navigate({ to: "/dashboard" });
   };
 
-  const handleGoogle = () => {
-    setUser({ name: "Usuario Google", email: "usuario@gmail.com", provider: "google" });
+  const handleGoogle = async () => {
+    const result = await signInWithGoogle();
+    if (result.error) {
+      toast.error("No se pudo iniciar con Google");
+      return;
+    }
+    if (result.redirected) return;
     navigate({ to: "/dashboard" });
   };
 
@@ -88,9 +106,10 @@ function RegisterPage() {
                 <input
                   type="password"
                   required
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Crea una contraseña"
+                  placeholder="Mínimo 6 caracteres"
                   className="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -98,9 +117,10 @@ function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              disabled={loading}
+              className="w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
             >
-              Crear cuenta
+              {loading ? "Creando..." : "Crear cuenta"}
             </button>
           </form>
 

@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { getUser, type User } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Bell } from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
@@ -11,17 +11,30 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) {
-      navigate({ to: "/login" });
-      return;
-    }
-    setUser(u);
-    setReady(true);
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const session = data.session;
+      if (!session) {
+        navigate({ to: "/login" });
+        return;
+      }
+      const meta = session.user.user_metadata as { full_name?: string; name?: string };
+      setDisplayName(meta.full_name ?? meta.name ?? session.user.email?.split("@")[0] ?? "Usuario");
+      setReady(true);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!session) navigate({ to: "/login" });
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (!ready) return null;
@@ -47,7 +60,7 @@ function AppLayout() {
                 <Bell className="h-4 w-4 text-muted-foreground" />
               </button>
               <span className="text-sm text-foreground">
-                👤 <span className="font-medium">{user?.name}</span>
+                👤 <span className="font-medium">{displayName}</span>
               </span>
             </div>
           </header>
