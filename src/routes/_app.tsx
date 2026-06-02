@@ -1,8 +1,9 @@
+// VIEW — Layout autenticado. Usa AuthController para guard de sesión.
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { supabase } from "@/integrations/supabase/client";
+import { AuthController } from "@/controllers/auth.controller";
 import { Bell } from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
@@ -16,9 +17,8 @@ function AppLayout() {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
+    AuthController.getCurrentSession().then((session) => {
       if (!active) return;
-      const session = data.session;
       if (!session) {
         navigate({ to: "/login" });
         return;
@@ -28,8 +28,8 @@ function AppLayout() {
       setReady(true);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) navigate({ to: "/login" });
+    const { data: sub } = AuthController.onAuthChange((signedIn) => {
+      if (!signedIn) navigate({ to: "/login" });
     });
     return () => {
       active = false;

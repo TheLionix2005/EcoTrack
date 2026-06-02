@@ -1,32 +1,32 @@
+// VIEW — Historial. Solo usa HistoryController.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { HistoryController } from "@/controllers/history.controller";
+import type { Habit } from "@/models/types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/history")({
   head: () => ({ meta: [{ title: "Historial — EcoTrack" }] }),
   component: HistoryPage,
 });
 
-type Row = { id: string; name: string; description: string | null; category: string | null; co2_kg: number; occurred_at: string };
-
 function HistoryPage() {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<Habit[]>([]);
+  const [total, setTotal] = useState(0);
+  const [avg, setAvg] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("habits")
-      .select("*")
-      .order("occurred_at", { ascending: false })
-      .then(({ data }) => {
-        setRows((data ?? []) as Row[]);
-        setLoading(false);
-      });
+    HistoryController.loadAll()
+      .then(({ rows, total, avg }) => {
+        setRows(rows);
+        setTotal(total);
+        setAvg(avg);
+      })
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() => setLoading(false));
   }, []);
-
-  const total = rows.reduce((s, r) => s + Number(r.co2_kg), 0);
-  const avg = rows.length ? total / rows.length : 0;
 
   return (
     <div>

@@ -1,14 +1,14 @@
+// VIEW — Perfil. Solo usa ProfileController.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { ProfileController } from "@/controllers/profile.controller";
+import type { Profile } from "@/models/types";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => ({ meta: [{ title: "Perfil — EcoTrack" }] }),
   component: ProfilePage,
 });
-
-type Profile = { id: string; full_name: string | null; email: string | null };
 
 function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -17,19 +17,13 @@ function ProfilePage() {
   const [totalCo2, setTotalCo2] = useState(0);
 
   useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
-      const [{ data: p }, { data: h }, { data: g }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", u.user.id).maybeSingle(),
-        supabase.from("habits").select("co2_kg"),
-        supabase.from("goals").select("completed"),
-      ]);
-      setProfile((p ?? null) as Profile | null);
-      setHabitsCount(h?.length ?? 0);
-      setTotalCo2((h ?? []).reduce((s, x) => s + Number(x.co2_kg), 0));
-      setGoalsDone((g ?? []).filter((x) => x.completed).length);
-    })();
+    ProfileController.loadDashboard().then((data) => {
+      if (!data) return;
+      setProfile(data.profile);
+      setHabitsCount(data.habitsCount);
+      setTotalCo2(data.totalCo2);
+      setGoalsDone(data.goalsDone);
+    });
   }, []);
 
   return (

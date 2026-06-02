@@ -1,8 +1,10 @@
+// VIEW — Página de metas. Solo usa GoalsController.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { GoalsController } from "@/controllers/goals.controller";
+import type { Goal, SuggestedGoal } from "@/models/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/goals")({
@@ -10,45 +12,38 @@ export const Route = createFileRoute("/_app/goals")({
   component: GoalsPage,
 });
 
-type Goal = { id: string; name: string; current: number; target: number; unit: string; completed: boolean };
-type Suggested = { id: string; name: string; target: number; unit: string; description: string | null };
-
 function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [suggested, setSuggested] = useState<Suggested[]>([]);
+  const [suggested, setSuggested] = useState<SuggestedGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [{ data: g }, { data: s }] = await Promise.all([
-      supabase.from("goals").select("*").order("created_at"),
-      supabase.from("suggested_goals").select("*"),
-    ]);
-    setGoals((g ?? []) as Goal[]);
-    setSuggested((s ?? []) as Suggested[]);
-    setLoading(false);
+    try {
+      const { goals, suggested } = await GoalsController.loadAll();
+      setGoals(goals);
+      setSuggested(suggested);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     load();
   }, []);
 
-  const adopt = async (sg: Suggested) => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { error } = await supabase.from("goals").insert({
-      user_id: u.user.id,
-      name: sg.name,
-      target: sg.target,
-      unit: sg.unit,
-      current: 0,
-    });
-    if (error) return toast.error(error.message);
-    toast.success("Meta agregada");
-    load();
+  const adopt = async (sg: SuggestedGoal) => {
+    try {
+      await GoalsController.adoptSuggested(sg);
+      toast.success("Meta agregada");
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
-  const active = goals.filter((g) => !g.completed);
-  const completed = goals.filter((g) => g.completed);
+  const { active, completed } = GoalsController.splitActiveCompleted(goals);
 
   return (
     <div>
@@ -62,7 +57,7 @@ function GoalsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {active.map((g) => {
-            const pct = Math.min(100, Math.round((Number(g.current) / Number(g.target)) * 100));
+            const pct = GoalsController.progressPct(g);
             return (
               <div key={g.id} className="rounded-2xl border border-border bg-card p-5">
                 <p className="font-semibold text-foreground">{g.name}</p>

@@ -1,28 +1,25 @@
+// VIEW — Recomendaciones. Solo usa RecommendationsController.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { RecommendationsController } from "@/controllers/recommendations.controller";
+import type { Recommendation } from "@/models/types";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/recommendations")({
   head: () => ({ meta: [{ title: "Recomendaciones — EcoTrack" }] }),
   component: RecsPage,
 });
 
-type Rec = { id: string; icon: string | null; title: string; description: string };
-
 function RecsPage() {
-  const [recs, setRecs] = useState<Rec[]>([]);
+  const [recs, setRecs] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("recommendations")
-      .select("*")
-      .order("created_at")
-      .then(({ data }) => {
-        setRecs((data ?? []) as Rec[]);
-        setLoading(false);
-      });
+    RecommendationsController.loadAll()
+      .then(setRecs)
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return (

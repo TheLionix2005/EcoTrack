@@ -1,8 +1,9 @@
+// VIEW — Página de inicio de sesión. Solo usa AuthController.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import logo from "@/assets/ecotrack-logo.jpg";
-import { signInWithEmail, signInWithGoogle } from "@/lib/auth";
+import { AuthController } from "@/controllers/auth.controller";
 import { GoogleButton } from "@/components/GoogleButton";
 import { toast } from "sonner";
 
@@ -23,21 +24,34 @@ function LoginPage() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    AuthController.getCurrentSession().then((session) => {
+      console.log("SESSION:", session);
+
+      if (session) {
+        console.log("Usuario autenticado, redirigiendo...");
+        navigate({ to: "/dashboard" });
+      }
+    });
+  }, [navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
-    const { error } = await signInWithEmail(email, password);
+    const { error } = await AuthController.signInWithEmail(email, password);
     setLoading(false);
+
     if (error) {
       toast.error(error.message);
       return;
     }
+
     navigate({ to: "/dashboard" });
   };
 
   const handleGoogle = async () => {
-    const result = await signInWithGoogle();
+    const result = await AuthController.signInWithGoogle();
     if (result.error) {
       toast.error("No se pudo iniciar con Google");
       return;
@@ -108,7 +122,7 @@ function LoginPage() {
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <GoogleButton label="Continuar con Google" onClick={handleGoogle} />
+       
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           ¿No tienes una cuenta?{" "}

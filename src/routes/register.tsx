@@ -1,9 +1,10 @@
+// VIEW — Página de registro. Solo usa AuthController.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 import logo from "@/assets/ecotrack-logo.jpg";
 import heroImg from "@/assets/ecotrack-hero.jpg";
-import { signUpWithEmail, signInWithGoogle } from "@/lib/auth";
+import { AuthController } from "@/controllers/auth.controller";
 import { GoogleButton } from "@/components/GoogleButton";
 import { toast } from "sonner";
 
@@ -32,7 +33,7 @@ function RegisterPage() {
       return;
     }
     setLoading(true);
-    const { error } = await signUpWithEmail(email, password, name);
+    const { error } = await AuthController.signUpWithEmail(email, password, name);
     setLoading(false);
     if (error) {
       toast.error(error.message);
@@ -43,7 +44,7 @@ function RegisterPage() {
   };
 
   const handleGoogle = async () => {
-    const result = await signInWithGoogle();
+    const result = await AuthController.signInWithGoogle();
     if (result.error) {
       toast.error("No se pudo iniciar con Google");
       return;
@@ -130,7 +131,7 @@ function RegisterPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <GoogleButton label="Continuar con Google" onClick={handleGoogle} />
+      
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             ¿Ya tienes cuenta?{" "}

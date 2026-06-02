@@ -1,8 +1,9 @@
+// VIEW — Configuración. Solo usa ProfileController y AuthController.
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
-import { signOut } from "@/lib/auth";
+import { ProfileController } from "@/controllers/profile.controller";
+import { AuthController } from "@/controllers/auth.controller";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -12,32 +13,34 @@ export const Route = createFileRoute("/_app/settings")({
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const [userId, setUserId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return;
-      const { data: p } = await supabase.from("profiles").select("*").eq("id", u.user.id).maybeSingle();
-      setName(p?.full_name ?? "");
-      setEmail(p?.email ?? u.user.email ?? "");
-    })();
+    ProfileController.loadForSettings().then((data) => {
+      if (!data) return;
+      setUserId(data.userId);
+      setName(data.name);
+      setEmail(data.email);
+    });
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { error } = await supabase.from("profiles").update({ full_name: name }).eq("id", u.user.id);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Perfil actualizado");
+    try {
+      await ProfileController.updateName(userId, name);
+      toast.success("Perfil actualizado");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSignOut = async () => {
-    await signOut();
+    await AuthController.signOut();
     navigate({ to: "/login" });
   };
 

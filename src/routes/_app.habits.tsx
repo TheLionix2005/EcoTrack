@@ -1,25 +1,16 @@
+// VIEW — Página de hábitos. Solo usa HabitsController.
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { HabitsController } from "@/controllers/habits.controller";
+import type { Habit, Category } from "@/models/types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/habits")({
   head: () => ({ meta: [{ title: "Mis hábitos — EcoTrack" }] }),
   component: HabitsPage,
 });
-
-type Habit = {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string | null;
-  co2_kg: number;
-  occurred_at: string;
-};
-
-type Category = { id: string; name: string; icon: string | null };
 
 const baseFilters = ["Todos"];
 
@@ -32,13 +23,15 @@ function HabitsPage() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [{ data: h }, { data: c }] = await Promise.all([
-      supabase.from("habits").select("*").order("occurred_at", { ascending: false }),
-      supabase.from("categories").select("*").order("name"),
-    ]);
-    setHabits((h ?? []) as Habit[]);
-    setCategories((c ?? []) as Category[]);
-    setLoading(false);
+    try {
+      const { habits, categories } = await HabitsController.loadAll();
+      setHabits(habits);
+      setCategories(categories);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -46,35 +39,35 @@ function HabitsPage() {
   }, []);
 
   const filters = [...baseFilters, ...categories.map((c) => c.name)];
-  const list = active === "Todos" ? habits : habits.filter((h) => h.category === active);
-  const total = list.reduce((s, h) => s + Number(h.co2_kg), 0);
+  const list = HabitsController.filterByCategory(habits, active);
+  const total = HabitsController.sumCo2(list);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const { error } = await supabase.from("habits").insert({
-      user_id: u.user.id,
-      name: form.name,
-      description: form.description,
-      category: form.category,
-      co2_kg: Number(form.co2_kg) || 0,
-    });
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await HabitsController.addHabit({
+        name: form.name,
+        description: form.description,
+        category: form.category,
+        co2_kg: Number(form.co2_kg) || 0,
+      });
+      toast.success("Hábito agregado");
+      setOpen(false);
+      setForm({ name: "", description: "", category: "Transporte", co2_kg: "" });
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
     }
-    toast.success("Hábito agregado");
-    setOpen(false);
-    setForm({ name: "", description: "", category: "Transporte", co2_kg: "" });
-    load();
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("habits").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Hábito eliminado");
-    load();
+    try {
+      await HabitsController.deleteHabit(id);
+      toast.success("Hábito eliminado");
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   };
 
   return (
