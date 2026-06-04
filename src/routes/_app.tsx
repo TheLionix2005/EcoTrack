@@ -6,6 +6,37 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AuthController } from "@/controllers/auth.controller";
 import { Bell } from "lucide-react";
 
+
+import { useEffect } from "react";
+
+function App() {
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.innerHTML = `
+      (function(m,a,z,e){
+        ...
+      })(window, document, "maze");
+    `;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  return (
+    <div>
+      <h1>Mi app</h1>
+    </div>
+  );
+}
+
+export default App;
+
+
+
+
+
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
