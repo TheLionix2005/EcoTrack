@@ -6,12 +6,23 @@ on:
       - main
 
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
 
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
 
-      - name: Mostrar mensaje
-        run: echo "GitHub Actions funcionando"
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar Lint
+        run: npm run lint
+
+      - name: Ejecutar Build
+        run: npm run build
